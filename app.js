@@ -16,9 +16,15 @@ const {
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-mongoose.connect(process.env.MONGO_URL).then((e) => {
-  console.log("MongoDB Connected");
-});
+mongoose
+  .connect(process.env.MONGO_URL)
+  .then((e) => {
+    console.log("MongoDB Connected");
+  })
+  .catch((err) => {
+    console.error("MongoDB Connection Error:", err);
+    process.exit(1);
+  });
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
@@ -34,7 +40,7 @@ app.set("views", path.resolve("./views"));
 app.get("/", async (req, res) => {
   const allBlogs = await Blog.find({});
 
-  console.log(req.user);
+  // console.log(req.user);
   return res.render("home", {
     user: req.user,
     blogs: allBlogs,
