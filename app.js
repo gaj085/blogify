@@ -37,12 +37,17 @@ app.use(express.static(path.resolve("./public"))); // this basically says, publi
 app.set("view engine", "ejs");
 app.set("views", path.resolve("./views"));
 
+// Make user available in all EJS templates
+app.use((req, res, next) => {
+  res.locals.user = req.user;
+  next();
+});
+
 app.get("/", async (req, res) => {
   const allBlogs = await Blog.find({});
 
   // console.log(req.user);
   return res.render("home", {
-    user: req.user,
     blogs: allBlogs,
   });
 });
@@ -61,7 +66,6 @@ app.get("/search", async (req, res) => {
     });
 
     return res.render("searchResults", {
-      user: req.user,
       blogs,
       query,
     });
