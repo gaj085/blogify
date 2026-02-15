@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('./partials/head') %>
+    <title>Search Results</title>
+</head>
+
+<body>
+  <%- include('./partials/nav') %>
+
+    <div class="container mt-5">
+
+      <h3 class="mb-4">
+        Search Results for: "<%= query %>"
+      </h3>
+
+      <% if (blogs.length===0) { %>
+
+        <div class="alert alert-warning">
+          No blogs found matching your search.
+        </div>
+
+        <a href="/" class="btn btn-dark">
+          Back to Home
+        </a>
+
+        <% } else { %>
+
+          <% blogs.forEach(blog=> { %>
+            <div class="row align-items-center mb-4 pb-4 border-bottom">
+
+              <div class="col-md-4">
+                <img src="<%= blog.coverImageURL %>" class="img-fluid rounded"
+                  style="height: 200px; object-fit: cover;">
+              </div>
+
+              <div class="col-md-8">
+                <h4>
+                  <%= blog.title %>
+                </h4>
+
+                <p class="text-muted">
+                  Published on <%= blog.createdAt.toDateString() %>
+                </p>
+
+                <a href="/blog/<%= blog._id %>" class="btn btn-outline-dark">
+                  Read More
+                </a>
+              </div>
+
+            </div>
+            <% }) %>
+
+              <% } %>
+
+    </div>
+
+    <%- include('./partials/scripts') %>
+</body>
+
+</html>

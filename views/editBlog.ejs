@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <%- include('./partials/head') %>
+    <title>Edit Blog</title>
+</head>
+
+<body>
+
+  <%- include('./partials/nav') %>
+
+    <div class="container py-5">
+
+      <h2 class="mb-4">Edit Blog</h2>
+
+      <!-- ================= Edit Form ================= -->
+      <form id="editBlogForm" action="/blog/edit/<%= blog._id %>" method="post" enctype="multipart/form-data">
+
+        <!-- Current Cover -->
+        <div class="mb-3">
+          <label class="form-label">Current Cover Image</label><br>
+          <img src="<%= blog.coverImageURL %>" class="img-fluid rounded" style="max-height:200px;">
+        </div>
+
+        <!-- Change Cover -->
+        <div class="mb-3">
+          <label class="form-label">Change Cover Image</label>
+          <input type="file" name="coverImage" class="form-control">
+        </div>
+
+        <!-- Title -->
+        <div class="mb-3">
+          <label class="form-label">Title</label>
+          <input type="text" name="title" class="form-control" value="<%= blog.title %>" required>
+        </div>
+
+        <!-- Body -->
+        <div class="mb-3">
+          <label class="form-label">Body</label>
+          <textarea name="body" rows="8" class="form-control" required><%= blog.body %></textarea>
+        </div>
+
+        <!-- Buttons -->
+        <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#updateConfirmModal">
+          Update Blog
+        </button>
+
+        <a href="/blog/<%= blog._id %>" class="btn btn-outline-secondary ms-2">
+          Cancel
+        </a>
+
+      </form>
+
+    </div>
+
+
+    <!-- ================= Update Confirmation Modal ================= -->
+
+    <div class="modal fade" id="updateConfirmModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title">Confirm Update</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body">
+            Are you sure you want to update this blog?
+          </div>
+
+          <div class="modal-footer">
+
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+
+            <button type="button" class="btn btn-primary" id="confirmUpdateBtn">
+              Yes, Update
+            </button>
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ================= Script ================= -->
+
+    <script>
+      document.getElementById("confirmUpdateBtn")
+        .addEventListener("click", function () {
+
+          document.getElementById("editBlogForm").submit();
+        });
+    </script>
+
+    <%- include('./partials/scripts') %>
+
+</body>
+
+</html>

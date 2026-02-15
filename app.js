@@ -47,6 +47,30 @@ app.get("/", async (req, res) => {
   });
 });
 
+// Search route =>
+app.get("/search", async (req, res) => {
+  const query = req.query.query;
+
+  if (!query) {
+    return res.redirect("/");
+  }
+
+  try {
+    const blogs = await Blog.find({
+      title: { $regex: query, $options: "i" }, // case-insensitive search
+    });
+
+    return res.render("searchResults", {
+      user: req.user,
+      blogs,
+      query,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.redirect("/");
+  }
+});
+
 app.use("/user", userRoute);
 app.use("/blog", blogRoute);
 
