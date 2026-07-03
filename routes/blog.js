@@ -8,30 +8,20 @@ const Comment = require("../models/comment");
 
 const router = Router();
 
-/* ======================================================
-   Ensure Upload Directory Exists
-====================================================== */
+const cloudinary = require("cloudinary").v2;
 
-const uploadDir = path.join(__dirname, "../public/uploads");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-/* ======================================================
-   Multer Configuration
-   - Only image files
-   - Max 5MB
-====================================================== */
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  },
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Multer Configuration
+// - In-memory storage to prevent local file loss and nodemon restarts
+// - Only image files
+// - Max 5MB
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -45,33 +35,87 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-/* ======================================================
-   Render Add Blog Page
-====================================================== */
+// Persistent Image Helpers (Cloudinary with Base64 Fallback)
+async function persistImage(file) {
+  if (!file) return null;
 
+  const isCloudinaryConfigured =
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET;
+
+  if (isCloudinaryConfigured) {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: "blogify" },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result.secure_url);
+        },
+      );
+      uploadStream.end(file.buffer);
+    });
+  } else {
+    // Fallback: Convert to Base64 Data URL and store in DB
+    const base64Data = file.buffer.toString("base64");
+    return `data:${file.mimetype};base64,${base64Data}`;
+  }
+}
+
+async function deletePersistedImage(imageUrl) {
+  if (!imageUrl) return;
+
+  if (imageUrl.includes("res.cloudinary.com")) {
+    try {
+      const parts = imageUrl.split("/");
+      const uploadIndex = parts.indexOf("upload");
+      if (uploadIndex === -1) return;
+      const pathParts = parts.slice(uploadIndex + 2); // skips 'upload' and version 'vxxxx'
+      const publicIdWithExt = pathParts.join("/");
+      const publicId = publicIdWithExt.substring(
+        0,
+        publicIdWithExt.lastIndexOf("."),
+      );
+      await cloudinary.uploader.destroy(publicId);
+    } catch (error) {
+      console.error("Failed to delete image from Cloudinary:", error);
+    }
+  } else if (imageUrl.startsWith("/uploads/")) {
+    // Delete legacy local files if they exist
+    try {
+      const localPath = path.join(__dirname, "../public", imageUrl);
+      if (fs.existsSync(localPath)) {
+        fs.unlinkSync(localPath);
+      }
+    } catch (error) {
+      console.error("Failed to delete legacy local image:", error);
+    }
+  }
+}
+
+// Render Add Blog Page
 router.get("/add-new", (req, res) => {
   if (!req.user) return res.redirect("/user/signin");
 
   res.render("addBlog", { user: req.user });
 });
 
-/* ======================================================
-   Create Blog
-====================================================== */
-
+// Create Blog
 router.post("/", upload.single("coverImage"), async (req, res) => {
   try {
     if (!req.user) return res.redirect("/user/signin");
 
     const { title, body } = req.body;
 
+    const coverImageURL = req.file
+      ? await persistImage(req.file)
+      : "/images/default-cover.jpg";
+
     const blog = await Blog.create({
       title,
       body,
       createdBy: req.user._id,
-      coverImageURL: req.file
-        ? `/uploads/${req.file.filename}`
-        : "/images/default-cover.jpg",
+      coverImageURL,
     });
 
     res.redirect(`/blog/${blog._id}`);
@@ -81,10 +125,7 @@ router.post("/", upload.single("coverImage"), async (req, res) => {
   }
 });
 
-/* ======================================================
-   View Blog
-====================================================== */
-
+// View Blog
 router.get("/:id", async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id).populate("createdBy");
@@ -106,10 +147,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-/* ======================================================
-   Edit Blog Page
-====================================================== */
-
+// Edit Blog Page
 router.get("/edit/:id", async (req, res) => {
   try {
     if (!req.user) return res.redirect("/user/signin");
@@ -131,10 +169,7 @@ router.get("/edit/:id", async (req, res) => {
   }
 });
 
-/* ======================================================
-   Update Blog
-====================================================== */
-
+// Update Blog
 router.post("/edit/:id", upload.single("coverImage"), async (req, res) => {
   try {
     if (!req.user) return res.redirect("/user/signin");
@@ -150,17 +185,13 @@ router.post("/edit/:id", upload.single("coverImage"), async (req, res) => {
     blog.body = req.body.body;
 
     if (req.file) {
-      const oldImagePath = path.join(
-        __dirname,
-        "../public",
-        blog.coverImageURL,
-      );
-
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
+      // Clean up old image if necessary
+      if (blog.coverImageURL !== "/images/default-cover.jpg") {
+        await deletePersistedImage(blog.coverImageURL);
       }
 
-      blog.coverImageURL = `/uploads/${req.file.filename}`;
+      // Upload new image
+      blog.coverImageURL = await persistImage(req.file);
     }
 
     await blog.save();
@@ -172,10 +203,7 @@ router.post("/edit/:id", upload.single("coverImage"), async (req, res) => {
   }
 });
 
-/* ======================================================
-   Delete Blog
-====================================================== */
-
+// Delete Blog
 router.post("/delete/:id", async (req, res) => {
   try {
     if (!req.user) return res.redirect("/user/signin");
@@ -187,7 +215,14 @@ router.post("/delete/:id", async (req, res) => {
       return res.redirect("/");
     }
 
+    // Delete associated comments
     await Comment.deleteMany({ blogId: blog._id });
+
+    // Clean up old image if not the default cover
+    if (blog.coverImageURL !== "/images/default-cover.jpg") {
+      await deletePersistedImage(blog.coverImageURL);
+    }
+
     await blog.deleteOne();
 
     res.redirect("/");
@@ -197,10 +232,7 @@ router.post("/delete/:id", async (req, res) => {
   }
 });
 
-/* ======================================================
-   Add Comment
-====================================================== */
-
+// Add Comment
 router.post("/comment/:blogId", async (req, res) => {
   try {
     if (!req.user) return res.redirect("/user/signin");
@@ -218,10 +250,7 @@ router.post("/comment/:blogId", async (req, res) => {
   }
 });
 
-/* ======================================================
-   Delete Comment
-====================================================== */
-
+// Delete Comment
 router.post("/comment/delete/:commentId", async (req, res) => {
   try {
     if (!req.user) return res.redirect("/user/signin");

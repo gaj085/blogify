@@ -14,7 +14,7 @@
 
     <div class="container py-5">
 
-      <!-- ================= Blog Header ================= -->
+      <!-- Blog Header -->
       <h1 class="fw-bold mb-3">
         <%= blog.title %>
       </h1>
@@ -45,13 +45,13 @@
         </div>
         <% } %>
 
-          <!-- ================= Blog Image ================= -->
+          <!-- Blog Image -->
           <div class="my-4">
             <img src="<%= blog.coverImageURL %>" class="img-fluid rounded shadow-sm"
               style="max-height: 500px; width: 100%; object-fit: cover;">
           </div>
 
-          <!-- ================= Blog Content ================= -->
+          <!-- Blog Content -->
           <div class="mb-5">
             <p style="white-space: pre-wrap;" class="fs-5 lh-lg">
               <%= blog.body %>
@@ -60,7 +60,7 @@
 
           <hr class="my-5">
 
-          <!-- ================= Comments Section ================= -->
+          <!-- Comments Section -->
           <h4 class="fw-bold mb-4">
             Comments (<%= comments.length %>)
           </h4>
@@ -129,7 +129,7 @@
     </div>
 
 
-    <!-- ================= Delete Blog Modal ================= -->
+    <!-- Delete Blog Modal -->
 
     <div class="modal fade" id="deleteBlogModal" tabindex="-1">
       <div class="modal-dialog">
@@ -162,7 +162,7 @@
     </div>
 
 
-    <!-- ================= Delete Comment Modal ================= -->
+    <!-- Delete Comment Modal -->
 
     <div class="modal fade" id="deleteCommentModal" tabindex="-1">
       <div class="modal-dialog">
@@ -196,7 +196,7 @@
     </div>
 
 
-    <!-- ================= Modal Script ================= -->
+    <!-- Modal Script -->
 
     <script>
       const deleteCommentModal = document.getElementById('deleteCommentModal');

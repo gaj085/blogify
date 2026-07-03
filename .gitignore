@@ -1,3 +1,4 @@
 node_modules/
 .env
-public/uploads-01
+public/uploads/
+public/uploads-01/
